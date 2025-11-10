@@ -37,13 +37,12 @@ function fetchIncheonData() {
     const newsApiKey = 'A4249378b3d64bfbac72cae96be3fe'; // 새소식 API 키
     const jobsApiKey = 'Fb7cf8993c5b4d8cb042d608ed3b6f'; // 일자리 API 키
 
-    // --- (수정됨) ---
-    // 인천시 Open API의 올바른 엔드포인트와 파라미터 형식 사용
-    const newsUrl = `https://www.incheon.go.kr/ICDP/API/getNewIncheonList?KEY=${newsApiKey}&Type=json&Page=1&Rows=10`;
-    const jobsUrl = `https://www.incheon.go.kr/ICDP/API/getIncheonJobList?KEY=${jobsApiKey}&Type=json&Page=1&Rows=10`;
-    // -------------------
+    // 인천시 Open API 엔드포인트 (XML 응답)
+    const apiBaseUrl = 'http://www.incheon.go.kr/dp/openapi/data';
+    const newsUrl = `${apiBaseUrl}?apicode=11&key=${newsApiKey}&page=1`;
+    const jobsUrl = `${apiBaseUrl}?apicode=13&key=${jobsApiKey}&page=1`;
 
-    Logger.log(`뉴스 URL 호출: ${newsUrl}`);
+    Logger.log(`새소식 URL 호출: ${newsUrl}`);
     Logger.log(`일자리 URL 호출: ${jobsUrl}`);
 
     const responses = UrlFetchApp.fetchAll([
@@ -54,8 +53,8 @@ function fetchIncheonData() {
     const newsResponse = responses[0];
     const jobsResponse = responses[1];
 
-    const newsData = processResponse(newsResponse, 'newIncheon');
-    const jobsData = processResponse(jobsResponse, 'incheonJob');
+    const newsData = processXmlResponse(newsResponse, 'news');
+    const jobsData = processXmlResponse(jobsResponse, 'jobs');
 
     const resultData = {
       news: newsData,
@@ -83,58 +82,123 @@ function fetchIncheonData() {
 }
 
 /**
- * UrlFetchApp 응답을 처리하고 파싱하는 도우미 함수입니다.
- * (수정됨) API 응답 텍스트와 파싱된 JSON 객체를 상세히 로깅합니다.
+ * UrlFetchApp 응답을 처리하고 XML을 파싱하는 도우미 함수입니다.
  * @param {UrlFetchApp.HTTPResponse} response - API 응답 객체
- * @param {string} apiName - API 이름 (예: 'newIncheon', 'incheonJob')
- * @returns {object} - 파싱된 JSON 데이터 또는 오류 객체
+ * @param {string} apiType - API 타입 ('news' 또는 'jobs')
+ * @returns {Array|object} - 파싱된 데이터 배열 또는 오류 객체
  */
-function processResponse(response, apiName) {
+function processXmlResponse(response, apiType) {
   const responseCode = response.getResponseCode();
   const responseText = response.getContentText();
 
-  // --- (디버깅 로그 1) ---
-  // API가 반환한 원본 텍스트를 그대로 로그에 남깁니다.
-  // JSON 파싱 전에 오류가 있는지 (예: HTML 오류 페이지가 반환되는지) 확인할 수 있습니다.
-  Logger.log(`[${apiName}] API 원본 응답 (코드: ${responseCode}): ${responseText}`);
-  // -------------------------
+  Logger.log(`[${apiType}] API 응답 코드: ${responseCode}`);
+  Logger.log(`[${apiType}] API 원본 응답 (처음 500자): ${responseText.substring(0, 500)}`);
 
-  if (responseCode === 200) {
-    try {
-      // JSON 응답을 파싱합니다.
-      const json = JSON.parse(responseText);
+  if (responseCode !== 200) {
+    Logger.log(`${apiType} API 요청 실패. 코드: ${responseCode}`);
+    return { error: `[${apiType}] API 요청 실패 (HTTP ${responseCode})` };
+  }
 
-      // --- (디버깅 로그 2) ---
-      // 파싱된 JSON 객체 전체를 로그에 남깁니다.
-      // 이 로그를 보면 데이터 구조(예: 'newIncheon[1].row')가 올바른지 알 수 있습니다.
-      Logger.log(`[${apiName}] 파싱된 JSON 객체: ${JSON.stringify(json)}`);
-      // -------------------------
+  try {
+    // XML 파싱
+    const document = XmlService.parse(responseText);
+    const root = document.getRootElement();
 
-      // (수정됨) 인천 API는 'newIncheon' 또는 'incheonJob'을 키로 사용합니다.
-      const dataKey = apiName; // "newIncheon" 또는 "incheonJob"
-
-      // 데이터가 정상적으로 존재하는지 확인
-      if (json[dataKey] && json[dataKey][1] && json[dataKey][1].row) {
-        return json[dataKey][1].row; // 실제 데이터 배열 반환
-
-      // 데이터가 없거나 API가 오류 메시지를 반환하는지 확인
-      } else if (json[dataKey] && json[dataKey][0] && json[dataKey][0].RESULT) {
-        const apiError = json[dataKey][0].RESULT;
-        Logger.log(`${dataKey} API 오류: ${apiError.MESSAGE}`);
-        return { error: `[${dataKey}] API 오류: ${apiError.MESSAGE}` };
-
-      // 예상치 못한 구조일 경우
-      } else {
-        Logger.log(`${dataKey} 데이터 형식이 예상과 다릅니다. (json[dataKey][1].row 없음)`);
-        return { error: `[${dataKey}] 데이터 형식이 올바르지 않습니다.` };
-      }
-    } catch (e) {
-      Logger.log(`${apiName} JSON 파싱 오류: ${e.message}. (원본: ${responseText.substring(0, 200)}...)`);
-      // API가 HTML 오류 페이지를 반환하면 여기서 오류가 납니다.
-      return { error: `[${apiName}] 응답 파싱 실패: ${e.message}` };
+    // 에러 체크
+    const errorElement = root.getChild('error');
+    if (errorElement) {
+      const errorCode = errorElement.getChildText('code');
+      const errorMessage = errorElement.getChildText('message');
+      Logger.log(`${apiType} API 오류: ${errorCode} - ${errorMessage}`);
+      return { error: `[${apiType}] API 오류: ${errorMessage} (코드: ${errorCode})` };
     }
-  } else {
-    Logger.log(`${apiName} API 요청 실패. 코드: ${responseCode}.`);
-    return { error: `[${apiName}] API 요청 실패 (HTTP ${responseCode})` };
+
+    // item 요소들 가져오기
+    const items = root.getChildren('item');
+
+    if (!items || items.length === 0) {
+      Logger.log(`${apiType} 데이터가 비어있습니다.`);
+      return [];
+    }
+
+    Logger.log(`${apiType} ${items.length}개의 항목을 찾았습니다.`);
+
+    // 타입에 따라 다르게 파싱
+    if (apiType === 'news') {
+      return parseNewsItems(items);
+    } else if (apiType === 'jobs') {
+      return parseJobItems(items);
+    } else {
+      return [];
+    }
+
+  } catch (e) {
+    Logger.log(`${apiType} XML 파싱 오류: ${e.message}`);
+    return { error: `[${apiType}] 응답 파싱 실패: ${e.message}` };
+  }
+}
+
+/**
+ * 새소식 XML 아이템을 파싱합니다.
+ * @param {Array} items - XML item 요소 배열
+ * @returns {Array} - 파싱된 새소식 데이터 배열
+ */
+function parseNewsItems(items) {
+  return items.map(function(item) {
+    return {
+      title: getChildText(item, 'sj') || '제목 없음',
+      content: getChildText(item, 'cn') || '',
+      summary: getChildText(item, 'summary') || '',
+      date: getChildText(item, 'writngDe') || '',
+      category: getChildText(item, 'realm') || '일반',
+      department: getChildText(item, 'nttDept') || '',
+      listNum: getChildText(item, 'listNum') || ''
+    };
+  });
+}
+
+/**
+ * 일자리 XML 아이템을 파싱합니다.
+ * @param {Array} items - XML item 요소 배열
+ * @returns {Array} - 파싱된 일자리 데이터 배열
+ */
+function parseJobItems(items) {
+  return items.map(function(item) {
+    const rceptBegin = getChildText(item, 'rceptBeginDte') || '';
+    const rceptEnd = getChildText(item, 'rceptEndDte') || '';
+    const period = (rceptBegin && rceptEnd) ? `${rceptBegin} ~ ${rceptEnd}` : '';
+
+    return {
+      title: getChildText(item, 'sj') || '제목 없음',
+      position: getChildText(item, 'rcritJssfc') || '',
+      numOfRecruits: getChildText(item, 'rcritNmpr') || '',
+      duties: getChildText(item, 'dtyCn') || '',
+      employmentType: getChildText(item, 'emplymStle') || '',
+      wage: getChildText(item, 'wageCnd') || '',
+      career: getChildText(item, 'careerCnd') || '',
+      education: getChildText(item, 'acdmcr') || '',
+      receptionMethod: getChildText(item, 'rceptMth') || '',
+      period: period,
+      startDate: rceptBegin,
+      endDate: rceptEnd,
+      date: getChildText(item, 'writngDe') || '',
+      notice: getChildText(item, 'noticeAt') || 'N',
+      listNum: getChildText(item, 'listNum') || ''
+    };
+  });
+}
+
+/**
+ * XML 요소에서 자식 텍스트를 안전하게 가져옵니다.
+ * @param {Element} element - XML 요소
+ * @param {string} childName - 자식 요소 이름
+ * @returns {string} - 텍스트 값 또는 빈 문자열
+ */
+function getChildText(element, childName) {
+  try {
+    const child = element.getChild(childName);
+    return child ? child.getText().trim() : '';
+  } catch (e) {
+    return '';
   }
 }

@@ -124,12 +124,11 @@
       padding: 20px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
-      cursor: pointer;
     }
 
     .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
     }
 
     .card-title {
@@ -361,23 +360,21 @@
       }
 
       container.innerHTML = newsData.map(item => {
-        const title = item.TITLE || item.title || '제목 없음';
-        const content = item.CONTENT || item.content || '';
-        const date = formatDate(item.REG_DATE || item.regDate || item.date);
-        const link = item.LINK || item.link || '#';
-        const category = item.CATEGORY || item.category || '일반';
+        const title = item.title || '제목 없음';
+        const content = item.content || item.summary || '';
+        const date = formatDate(item.date);
+        const category = item.category || '일반';
+        const department = item.department || '';
 
         return `
-          <div class="card" onclick="window.open('${link}', '_blank')">
+          <div class="card">
             <div class="card-meta">
-              <span class="card-badge">${category}</span>
+              <span class="card-badge">${escapeHtml(category)}</span>
               <span class="card-date">📅 ${date}</span>
             </div>
             <h3 class="card-title">${escapeHtml(title)}</h3>
             ${content ? `<p class="card-content">${escapeHtml(stripHtml(content))}</p>` : ''}
-            <a href="${link}" class="card-link" target="_blank" onclick="event.stopPropagation()">
-              자세히 보기 →
-            </a>
+            ${department ? `<p style="color: #999; font-size: 0.85rem; margin-top: 8px;">담당: ${escapeHtml(department)}</p>` : ''}
           </div>
         `;
       }).join('');
@@ -407,28 +404,28 @@
       }
 
       container.innerHTML = jobsData.map(item => {
-        const title = item.TITLE || item.title || '제목 없음';
-        const company = item.COMPANY || item.company || item.ORGAN || '';
-        const location = item.LOCATION || item.location || item.ADDR || '';
-        const period = item.PERIOD || item.period || '';
-        const date = formatDate(item.REG_DATE || item.regDate || item.date);
-        const link = item.LINK || item.link || '#';
+        const title = item.title || '제목 없음';
+        const position = item.position || '';
+        const numOfRecruits = item.numOfRecruits || '';
+        const employmentType = item.employmentType || '';
+        const duties = item.duties || '';
+        const period = item.period || '';
+        const date = formatDate(item.date);
+        const isNotice = item.notice === 'Y';
 
         return `
-          <div class="card" onclick="window.open('${link}', '_blank')">
+          <div class="card">
             <div class="card-meta">
-              <span class="card-badge">채용</span>
-              <span class="card-date">📅 ${date}</span>
+              <span class="card-badge">${isNotice ? '공지' : '채용'}</span>
+              <span class="card-date">📅 등록: ${date}</span>
             </div>
             <h3 class="card-title">${escapeHtml(title)}</h3>
             <div style="margin-bottom: 10px;">
-              ${company ? `<p style="color: #333; font-weight: 600; margin-bottom: 5px;">🏢 ${escapeHtml(company)}</p>` : ''}
-              ${location ? `<p style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📍 ${escapeHtml(location)}</p>` : ''}
-              ${period ? `<p style="color: #666; font-size: 0.9rem;">⏰ ${escapeHtml(period)}</p>` : ''}
+              ${position ? `<p style="color: #333; font-weight: 600; margin-bottom: 5px;">💼 ${escapeHtml(position)} ${numOfRecruits ? '(' + escapeHtml(numOfRecruits) + ')' : ''}</p>` : ''}
+              ${employmentType ? `<p style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📋 ${escapeHtml(employmentType)}</p>` : ''}
+              ${duties ? `<p style="color: #666; font-size: 0.9rem; margin-bottom: 5px;">📝 ${escapeHtml(stripHtml(duties))}</p>` : ''}
+              ${period ? `<p style="color: #e74c3c; font-weight: 600; font-size: 0.9rem;">⏰ 접수: ${escapeHtml(period)}</p>` : ''}
             </div>
-            <a href="${link}" class="card-link" target="_blank" onclick="event.stopPropagation()">
-              지원하기 →
-            </a>
           </div>
         `;
       }).join('');
