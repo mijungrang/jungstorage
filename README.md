@@ -73,9 +73,17 @@
 
 ```
 jungstorage/
-├── code.gs          # 백엔드 로직 (스크래핑, 캐싱)
-├── index.html       # 프론트엔드 UI
-└── README.md        # 사용 설명서
+├── code.gs                    # 백엔드 로직 (직접 스크래핑)
+├── code-external-api.gs       # 백엔드 로직 (외부 API 사용)
+├── index.html                 # 프론트엔드 UI
+├── README.md                  # 사용 설명서
+├── ALTERNATIVES.md            # 대안 방법 가이드
+└── external-server/           # Vercel 서버 (스크래핑 대안)
+    ├── api/
+    │   └── gazette.js         # Serverless Function
+    ├── package.json           # 의존성
+    ├── vercel.json           # Vercel 설정
+    └── README.md             # 서버 배포 가이드
 ```
 
 ## 주요 함수
@@ -114,6 +122,41 @@ jungstorage/
 - **403 Forbidden**: 웹사이트 접근 거부 → User-Agent 변경
 - **500 Internal Server Error**: 서버 오류 → 나중에 다시 시도
 - **Timeout**: 응답 시간 초과 → 네트워크 상태 확인
+
+## 🚨 웹 스크래핑이 완전히 실패하는 경우
+
+Google Apps Script에서 직접 스크래핑이 불가능한 경우 **외부 API 서버**를 사용하세요.
+
+### 해결 방법: Vercel 서버 사용 (추천) ⭐
+
+1. **`external-server` 폴더를 Vercel에 배포**
+   ```bash
+   cd external-server
+   npm install
+   vercel --prod
+   ```
+
+2. **`code.gs` 대신 `code-external-api.gs` 사용**
+   - `code-external-api.gs`의 `API_URL`을 배포된 URL로 변경
+   - Apps Script에서 `Code.gs` 내용을 `code-external-api.gs`로 교체
+
+3. **테스트**
+   - `testAPIConnection()` 함수 실행하여 연결 확인
+
+### 자세한 대안 방법
+
+더 많은 대안과 해결 방법은 다음 문서를 참조하세요:
+- **[ALTERNATIVES.md](ALTERNATIVES.md)** - 7가지 대안 방법 상세 가이드
+- **[external-server/README.md](external-server/README.md)** - Vercel 서버 배포 가이드
+
+### 다른 대안들
+
+1. **공공데이터포털 API** - 인천시보 공식 API 확인
+2. **RSS 피드** - RSS 제공 여부 확인
+3. **프록시 서비스** - ScraperAPI, Bright Data 등
+4. **인천시에 직접 문의** - 공식 API/RSS 제공 요청
+
+자세한 내용은 `ALTERNATIVES.md` 파일을 참고하세요.
 
 ## 업데이트 방법
 

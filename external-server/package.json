@@ -1,0 +1,17 @@
+{
+  "name": "incheon-gazette-scraper-api",
+  "version": "1.0.0",
+  "description": "인천시보 웹 스크래핑 API 서버",
+  "main": "api/gazette.js",
+  "scripts": {
+    "dev": "node api/gazette.js",
+    "test": "node test.js"
+  },
+  "keywords": ["incheon", "gazette", "scraper", "api"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12"
+  }
+}
