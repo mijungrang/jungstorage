@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>인천시보</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 1rem;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .refresh-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .refresh-btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .refresh-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status {
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 0.9rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: white;
+      font-size: 1.2rem;
+    }
+
+    .loading-spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .gazette-list {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .gazette-item {
+      border-bottom: 1px solid #eee;
+      padding: 20px;
+      transition: background 0.3s ease;
+      cursor: pointer;
+    }
+
+    .gazette-item:last-child {
+      border-bottom: none;
+    }
+
+    .gazette-item:hover {
+      background: #f8f9ff;
+    }
+
+    .gazette-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+      gap: 15px;
+    }
+
+    .gazette-number {
+      background: #667eea;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 15px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .gazette-title {
+      flex: 1;
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #333;
+      line-height: 1.5;
+    }
+
+    .gazette-date {
+      color: #999;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .gazette-link {
+      display: inline-block;
+      margin-top: 10px;
+      color: #667eea;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.3s ease;
+    }
+
+    .gazette-link:hover {
+      color: #5568d3;
+      text-decoration: underline;
+    }
+
+    .error-message {
+      background: #fee;
+      color: #c33;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      border-left: 4px solid #c33;
+    }
+
+    .empty-message {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+      font-size: 1.1rem;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .gazette-header {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .gazette-date {
+        align-self: flex-start;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .refresh-btn, .status {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📰 인천시보</h1>
+      <p class="subtitle">인천광역시 공식 시보 목록</p>
+    </header>
+
+    <div class="controls">
+      <button id="refreshBtn" class="refresh-btn" onclick="loadGazetteData()">
+        🔄 새로고침
+      </button>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+      <div class="loading-spinner"></div>
+      <p>인천시보 데이터를 불러오는 중...</p>
+    </div>
+
+    <div id="gazetteList" class="gazette-list"></div>
+  </div>
+
+  <script>
+    // 페이지 로드 시 자동으로 데이터 불러오기
+    window.onload = function() {
+      loadGazetteData();
+    };
+
+    /**
+     * 인천시보 데이터를 서버에서 가져와서 화면에 표시합니다.
+     */
+    function loadGazetteData() {
+      const loadingDiv = document.getElementById('loading');
+      const gazetteListDiv = document.getElementById('gazetteList');
+      const statusDiv = document.getElementById('status');
+      const refreshBtn = document.getElementById('refreshBtn');
+
+      // 로딩 상태 표시
+      loadingDiv.style.display = 'block';
+      gazetteListDiv.innerHTML = '';
+      statusDiv.textContent = '데이터 로딩 중...';
+      refreshBtn.disabled = true;
+
+      // 서버 측 함수 호출
+      google.script.run
+        .withSuccessHandler(function(data) {
+          loadingDiv.style.display = 'none';
+          refreshBtn.disabled = false;
+
+          // 오류 체크
+          if (data.error) {
+            displayError(data.error);
+            statusDiv.textContent = '오류 발생';
+            return;
+          }
+
+          // 데이터 표시
+          displayGazetteList(data);
+
+          const now = new Date();
+          statusDiv.textContent = `마지막 업데이트: ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+        })
+        .withFailureHandler(function(error) {
+          loadingDiv.style.display = 'none';
+          refreshBtn.disabled = false;
+          displayError('서버 오류: ' + error.message);
+          statusDiv.textContent = '오류 발생';
+        })
+        .fetchGazetteData();
+    }
+
+    /**
+     * 시보 목록을 화면에 표시합니다.
+     * @param {Array} data - 시보 데이터 배열
+     */
+    function displayGazetteList(data) {
+      const gazetteListDiv = document.getElementById('gazetteList');
+
+      if (!Array.isArray(data) || data.length === 0) {
+        gazetteListDiv.innerHTML = '<div class="empty-message">시보 데이터가 없습니다.</div>';
+        return;
+      }
+
+      let html = '';
+      data.forEach(function(item) {
+        html += `
+          <div class="gazette-item" onclick="window.open('${item.link || '#'}', '_blank')">
+            <div class="gazette-header">
+              <span class="gazette-number">No. ${item.number || '?'}</span>
+              <div class="gazette-title">${escapeHtml(item.title || '제목 없음')}</div>
+              ${item.date ? `<span class="gazette-date">${item.date}</span>` : ''}
+            </div>
+            ${item.link ? `<a href="${item.link}" target="_blank" class="gazette-link" onclick="event.stopPropagation()">자세히 보기 →</a>` : ''}
+          </div>
+        `;
+      });
+
+      gazetteListDiv.innerHTML = html;
+    }
+
+    /**
+     * 오류 메시지를 표시합니다.
+     * @param {string} message - 오류 메시지
+     */
+    function displayError(message) {
+      const gazetteListDiv = document.getElementById('gazetteList');
+      gazetteListDiv.innerHTML = `
+        <div class="error-message">
+          <strong>⚠️ 오류 발생</strong><br>
+          ${escapeHtml(message)}
+        </div>
+      `;
+    }
+
+    /**
+     * HTML 특수문자를 이스케이프합니다.
+     * @param {string} text - 원본 텍스트
+     * @returns {string} - 이스케이프된 텍스트
+     */
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
