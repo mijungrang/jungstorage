@@ -37,16 +37,23 @@
    - 저장 아이콘 클릭 (Ctrl+S)
    - 프로젝트 이름 입력 (예: "인천시보 크롤러")
 
-5. **실행**
-   - 함수 선택: `crawlIncheonGazette`
+5. **⚠️ 먼저 연결 테스트 실행 (중요!)**
+   - 함수 선택: `testConnection`
    - 실행 버튼 클릭
-   - 처음 실행 시 권한 승인 필요:
+   - 처음 실행 시 권한 승인:
      - "권한 검토" 클릭
      - Google 계정 선택
      - "고급" > "프로젝트 이름(안전하지 않음)으로 이동" 클릭
      - "허용" 클릭
+   - 실행 로그 확인 (`보기` > `로그`)
+   - **성공 시**: 다음 단계 진행
+   - **실패 시**: `대체방법.md` 참조
 
-6. **결과 확인**
+6. **크롤링 실행**
+   - 함수 선택: `crawlIncheonGazette`
+   - 실행 버튼 클릭
+
+7. **결과 확인**
    - Google Sheets로 돌아가기
    - "인천시보" 시트에서 크롤링된 데이터 확인
 
@@ -110,9 +117,11 @@ python3 crawl_incheon_gazette.py
 
 ```
 jungstorage/
-├── README.md                    # 이 파일
+├── README.md                    # 프로젝트 개요 (이 파일)
+├── 사용가이드.md                # 초보자용 상세 가이드
+├── 대체방법.md                  # 크롤링 실패 시 대체 방법
 ├── 인천시보크롤링.gs            # Google Apps Script 코드 (추천)
-├── crawl_incheon_gazette.py    # Python 크롤링 스크립트
+├── crawl_incheon_gazette.py    # Python 크롤링 스크립트 (참고)
 ├── requirements.txt            # Python 패키지 목록
 ├── code.gs                     # 기존 인천시 API 코드
 └── downloads/                  # PDF 다운로드 폴더 (자동 생성)
@@ -135,34 +144,71 @@ Google Sheets에는 다음 컬럼으로 데이터가 저장됩니다:
 | 기타1~5 | 기타 내용 (최대 5줄) |
 | PDF링크 | PDF 파일 다운로드 링크 |
 
-## ⚠️ 주의사항
+## ⚠️ 주요 주의사항
 
-1. **봇 차단**
-   - 인천시 웹사이트는 강력한 봇 차단 시스템을 사용합니다
-   - Google Apps Script 사용을 권장합니다
+### 1. 연결 테스트 필수!
 
-2. **크롤링 속도**
-   - 서버 부하 방지를 위해 딜레이가 설정되어 있습니다
-   - 각 페이지 간 2초, 각 항목 간 1초 대기
+크롤링 전에 **반드시** `testConnection()` 함수를 먼저 실행하세요.
 
-3. **API 제한**
-   - Google Sheets API는 사용량 제한이 있습니다
-   - 한 번에 너무 많은 페이지를 크롤링하지 마세요
+```javascript
+// Apps Script에서 실행 순서:
+1. testConnection()  // 먼저!
+2. crawlIncheonGazette()  // 연결 성공 후
+```
 
-4. **웹사이트 구조 변경**
-   - 인천시 웹사이트 구조가 변경되면 코드 수정이 필요할 수 있습니다
+**실패하는 경우**:
+- "Address unavailable" 오류
+- "Exceeded maximum execution time" 오류
+- 빈 데이터 수집
+
+→ **해결책**: `대체방법.md` 파일 참조
+
+### 2. 봇 차단 가능성
+
+인천시 웹사이트는 강력한 봇 차단을 사용할 수 있습니다.
+
+**대체 방법** (차단 시):
+- 브라우저 확장 프로그램 (Web Scraper)
+- Google Sheets IMPORTHTML 함수
+- 수동 복사 + 붙여넣기
+- 공공데이터포털 API
+
+자세한 내용: [`대체방법.md`](대체방법.md)
+
+### 3. 크롤링 속도
+
+서버 부하 방지를 위한 딜레이:
+- 각 항목 간: 0.5초
+- 각 페이지 간: 1초
+
+### 4. Google Apps Script 제한
+
+- 최대 실행 시간: 6분
+- 한 번에 많은 페이지 크롤링 시 타임아웃 가능
+- 권장: 1~5페이지씩 나누어 실행
 
 ## 🔧 문제 해결
 
 ### Google Apps Script 실행 오류
 
+**오류: "Address unavailable"**
+- 원인: 웹사이트가 Google Apps Script 차단
+- 해결: `testConnection()` 함수 실행 후 로그 확인
+- 대체: `대체방법.md` 참조
+
 **오류: "권한이 없습니다"**
 - 해결: Apps Script 실행 시 권한을 승인해야 합니다
 - "권한 검토" > "고급" > "허용" 클릭
 
-**오류: "시간 초과"**
+**오류: "Exceeded maximum execution time"**
 - 해결: 한 번에 크롤링하는 페이지 수를 줄이세요
-- 예: `crawlIncheonGazette(1, 3)`
+- 예: `crawlIncheonGazette(1, 2)`
+- 딜레이 줄이기: 코드의 `Utilities.sleep()` 값 감소
+
+**오류: "데이터가 수집되지 않음"**
+- 해결: 먼저 `testConnection()` 실행
+- "디버그_HTML" 시트에서 HTML 구조 확인
+- 웹사이트 구조가 변경되었을 수 있음
 
 ### Python 스크립트 오류
 
